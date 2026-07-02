@@ -203,6 +203,7 @@ app.post('/api/rpc', (req, res) => {
       }
       case 'getTeamSummaryForPeriod':   result = getTeamSummaryForPeriod(args[0], args[1], args[2]); break;
       case 'getAllTeamsDailySummary':   result = getAllTeamsSummaryForPeriod(args[0], args[1]); break;
+      case 'getAllTeamsSummaryForPeriod': result = getAllTeamsSummaryForPeriod(args[0], args[1]); break;
       case 'exportServicesForPeriod':   result = exportServicesForPeriod(args[0], args[1]); break;
       case 'getClassificationRules':    result = getClassificationRules(); break;
       case 'saveClassificationRules':   result = saveClassificationRules(args[0]); break;
