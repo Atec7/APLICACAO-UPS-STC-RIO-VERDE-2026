@@ -168,6 +168,11 @@ function err(msg) {
   return { success: false, message: msg };
 }
 
+// ===== SERVER INFO =====
+app.get('/api/server-info', (req, res) => {
+  res.json({ ips: getLocalIPs(), port: PORT, hostname: os.hostname() });
+});
+
 // ===== RPC =====
 app.post('/api/rpc', (req, res) => {
   const { method, args } = req.body;
@@ -472,6 +477,8 @@ function exportServicesForPeriod(startDate, endDate) {
     console.log('');
   });
 })();
+
+setInterval(saveDb, 10000); // Auto-save a cada 10s para evitar perda de dados em queda
 
 process.on('SIGINT', () => { saveDb(); process.exit(); });
 process.on('exit', saveDb);
