@@ -1,12 +1,16 @@
 @echo off
-cd /d "C:\Users\grupo\Desktop\projeto-aplicativo-ups"
+cd /d "%~dp0"
 echo ========================================
 echo   SISTEMA UPS - Iniciando servidor...
 echo ========================================
 echo.
-echo  Aguarde o servidor iniciar...
-echo  Seu IP local sera exibido no console.
-echo  Use esse IP para acessar de outros dispositivos.
+echo  Para acesso local (mesma rede):
+echo    Execute este arquivo e use o IP exibido
+echo.
+echo  Para acesso de qualquer lugar (internet):
+echo    Execute:  powershell -ExecutionPolicy Bypass -File "iniciar-tunel.ps1"
+echo.
+echo ========================================
 echo.
 node server.js
 pause

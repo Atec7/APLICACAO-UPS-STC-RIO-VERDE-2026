@@ -481,6 +481,7 @@ function exportServicesForPeriod(startDate, endDate) {
     localIPs.forEach(ip => console.log('  Rede:     http://' + ip + ':' + PORT));
     console.log('  Login:    admin / admin123');
     console.log('  CORS:     Habilitado para qualquer origem');
+    console.log('  Tunel:    Execute iniciar-tunel.ps1 para acesso via internet');
     console.log('========================================');
     console.log('');
   });
