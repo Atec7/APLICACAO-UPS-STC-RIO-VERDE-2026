@@ -193,11 +193,15 @@ app.post('/api/rpc', (req, res) => {
       case 'createCatalogService':      result = createCatalogService(args[0], args[1], args[2]); break;
       case 'updateCatalogService':      result = updateCatalogService(args[0], args[1], args[2], args[3], args[4]); break;
       case 'deleteCatalogService':      result = deleteCatalogService(args[0]); break;
-      case 'addService':                result = addService(args[0], args[1], args[2], args[3]); break;
-      case 'addServiceFromCatalog':     result = addServiceFromCatalog(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]); break;
+      case 'addService':                result = addService(args[0], args[1], args[2], args[3], args[4], args[5], args[6]); break;
+      case 'addServiceFromCatalog':     result = addServiceFromCatalog(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11]); break;
       case 'getTodayServices':          result = getTodayServices(args[0]); break;
       case 'getServicesByDate':         result = getServicesByDate(args[0], args[1]); break;
-      case 'getDailySummary':           result = getTeamSummaryForPeriod(args[0], args[1], args[2]); break;
+      case 'getDailySummary': {
+        const dailyEnd = args[2] || args[1];
+        result = getTeamSummaryForPeriod(args[0], args[1], dailyEnd); break;
+      }
+      case 'getTeamSummaryForPeriod':   result = getTeamSummaryForPeriod(args[0], args[1], args[2]); break;
       case 'getAllTeamsDailySummary':   result = getAllTeamsSummaryForPeriod(args[0], args[1]); break;
       case 'exportServicesForPeriod':   result = exportServicesForPeriod(args[0], args[1]); break;
       case 'getClassificationRules':    result = getClassificationRules(); break;
@@ -341,6 +345,10 @@ function getServicesForPeriod(userId, startDate, endDate) {
     grade: r.grade || 0, latitude: r.latitude || '', longitude: r.longitude || '',
     date: r.date
   }));
+}
+
+function getServicesByDate(userId, date) {
+  return getServicesForPeriod(userId, date, date);
 }
 
 function getTodayServices(userId) {
