@@ -1,0 +1,1773 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sistema UPS - Classificação de Equipes</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary: #2563eb;
+      --primary-light: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --primary-bg: #eff6ff;
+      --secondary: #64748b;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --border: #e2e8f0;
+      --border-light: #f1f5f9;
+      --success: #22c55e;
+      --success-bg: #f0fdf4;
+      --danger: #ef4444;
+      --danger-bg: #fef2f2;
+      --warning: #f59e0b;
+      --warning-bg: #fffbeb;
+      --info: #3b82f6;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.05);
+      --radius-sm: 6px;
+      --radius: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --money: #059669;
+      --money-bg: #ecfdf5;
+    }
+
+    html { height: 100%; }
+    body {
+      min-height: 100%; font-family: var(--font); background: var(--bg); color: var(--text);
+      font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+      font-size: 20px; vertical-align: middle; line-height: 1;
+    }
+
+    #loadingOverlay {
+      position: fixed; inset: 0; background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; z-index: 9999;
+      transition: opacity 0.4s, visibility 0.4s;
+    }
+    #loadingOverlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .loader { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .loader-spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .loader-text { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #toastContainer {
+      position: fixed; top: 16px; right: 16px; z-index: 10000;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+      max-width: 380px;
+    }
+    .toast {
+      pointer-events: auto; display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: var(--radius); background: var(--card);
+      box-shadow: var(--shadow-lg); border-left: 4px solid var(--primary);
+      animation: toastIn 0.3s ease; font-size: 13px; font-weight: 500;
+    }
+    .toast.removing { animation: toastOut 0.25s ease forwards; }
+    .toast .material-symbols-outlined { font-size: 20px; }
+    .toast-success { border-left-color: var(--success); }
+    .toast-success .material-symbols-outlined { color: var(--success); }
+    .toast-error { border-left-color: var(--danger); }
+    .toast-error .material-symbols-outlined { color: var(--danger); }
+    .toast-warning { border-left-color: var(--warning); }
+    .toast-info { border-left-color: var(--info); }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(100%) scale(0.95); } to { opacity: 1; transform: translateX(0) scale(1); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%) scale(0.95); } }
+
+    .view { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; animation: fadeIn 0.25s ease; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 18px; border: none; border-radius: var(--radius-sm); font-size: 13px;
+      font-weight: 600; font-family: var(--font); cursor: pointer;
+      transition: all var(--transition); user-select: none; white-space: nowrap;
+      position: relative; overflow: hidden;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); box-shadow: var(--shadow-md); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #dc2626; box-shadow: var(--shadow-md); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #16a34a; box-shadow: var(--shadow-md); }
+    .btn-money { background: var(--money); color: #fff; }
+    .btn-money:hover { background: #047857; box-shadow: var(--shadow-md); }
+    .btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+    .btn-outline:hover { background: var(--primary-bg); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn-xs { padding: 4px 8px; font-size: 11px; }
+    .btn-block { width: 100%; }
+    .btn-icon { width: 36px; height: 36px; padding: 0; border-radius: 50%; }
+
+    .card {
+      background: var(--card); border-radius: var(--radius-lg); padding: 20px;
+      box-shadow: var(--shadow); border: 1px solid var(--border-light);
+      transition: box-shadow var(--transition);
+    }
+    .card:hover { box-shadow: var(--shadow-md); }
+    .card-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: -12px; margin-bottom: 16px; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px;
+      color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+
+    input, select {
+      width: 100%; padding: 10px 12px; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font);
+      transition: all var(--transition); background: #fff; color: var(--text);
+    }
+    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+    input::placeholder { color: var(--text-muted); }
+    input[type="color"] { height: 40px; padding: 4px; cursor: pointer; }
+    input[readonly] { background: var(--bg); color: var(--text-secondary); cursor: default; }
+
+    .badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 52px; height: 52px; border-radius: 50%; font-size: 24px; font-weight: 800;
+      color: #fff; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      transition: transform var(--transition);
+    }
+    .badge:hover { transform: scale(1.05); }
+    .badge-sm { width: 36px; height: 36px; font-size: 16px; }
+    .badge-lg { width: 64px; height: 64px; font-size: 28px; }
+
+    .conn-status { text-align: center; font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.conn-status.error { color: var(--danger); }
+.conn-status.success { color: var(--success); }
+.msg { display: none; padding: 10px 14px; border-radius: var(--radius-sm); margin-bottom: 12px; font-size: 13px; font-weight: 500; }
+    .msg.error { display: flex; align-items: center; gap: 8px; background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+    .msg.success { display: flex; align-items: center; gap: 8px; background: var(--success-bg); color: #16a34a; border: 1px solid #bbf7d0; }
+
+    #loginView {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 20px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+      position: relative;
+    }
+    #loginView:not(.active) { display: none; }
+    #loginView::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.06) 0%, transparent 50%);
+    }
+    .login-card {
+      width: 100%; max-width: 400px; padding: 36px 32px 32px; position: relative;
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(20px);
+      border-radius: var(--radius-xl); box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(255,255,255,0.1);
+      animation: loginIn 0.5s ease;
+    }
+    @keyframes loginIn { from { opacity: 0; transform: translateY(20px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .login-logo {
+      width: 64px; height: 64px; border-radius: 16px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    }
+    .login-logo .material-symbols-outlined { font-size: 32px; color: #fff; }
+    .login-header { text-align: center; margin-bottom: 28px; }
+    .login-header h1 { font-size: 22px; font-weight: 800; color: var(--text); }
+    .login-header p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+    .login-input { padding: 12px 14px 12px 40px !important; }
+    .login-input-wrapper { position: relative; }
+    .login-input-wrapper .material-symbols-outlined {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 18px;
+    }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--card); padding: 14px 20px; border-radius: var(--radius-lg);
+      box-shadow: var(--shadow); border: 1px solid var(--border-light);
+      margin-bottom: 20px; gap: 12px;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+    .topbar-avatar {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      display: flex; align-items: center; justify-content: center;
+    }
+    .topbar-avatar .material-symbols-outlined { color: #fff; font-size: 18px; }
+    .topbar-left h2 { font-size: 16px; font-weight: 700; }
+    .topbar-info { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+
+    .class-display {
+      display: flex; align-items: center; gap: 16px; padding: 20px;
+      background: var(--card); border-radius: var(--radius-lg); box-shadow: var(--shadow);
+      border: 1px solid var(--border-light); margin-bottom: 16px;
+      transition: transform var(--transition);
+    }
+    .class-display:hover { transform: translateY(-1px); }
+    .class-display .info { flex: 1; }
+    .class-display .info .total { font-size: 32px; font-weight: 800; line-height: 1.2; }
+    .class-display .info .total-money { font-size: 16px; font-weight: 700; color: var(--money); }
+    .class-display .info .label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .class-display .info .meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .service-list { max-height: 420px; overflow-y: auto; }
+    .service-list::-webkit-scrollbar { width: 4px; }
+    .service-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .service-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: var(--radius-sm);
+      transition: background var(--transition);
+    }
+    .service-item:hover { background: var(--bg); }
+    .service-item + .service-item { border-top: 1px solid var(--border-light); }
+    .service-item .srv-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--primary-bg); display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .service-item .srv-icon .material-symbols-outlined { color: var(--primary); font-size: 16px; }
+    .service-item .srv-body { flex: 1; min-width: 0; }
+    .service-item .srv-body .name { font-weight: 600; font-size: 14px; display: block; }
+    .service-item .srv-body .detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .service-item .srv-values { text-align: right; flex-shrink: 0; }
+    .service-item .srv-values .ups { font-weight: 700; color: var(--primary); font-size: 14px; }
+    .service-item .srv-values .money { font-size: 12px; color: var(--money); font-weight: 600; display: block; }
+    .service-item .del-btn {
+      background: none; border: none; color: var(--text-muted); cursor: pointer;
+      padding: 4px; border-radius: 6px; transition: all var(--transition);
+      opacity: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .service-item:hover .del-btn { opacity: 1; }
+    .service-item .del-btn:hover { background: var(--danger-bg); color: var(--danger); }
+
+    .nav-tabs {
+      display: flex; gap: 4px; background: var(--card); padding: 4px;
+      border-radius: var(--radius-lg); box-shadow: var(--shadow);
+      border: 1px solid var(--border-light); margin-bottom: 20px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .nav-tab {
+      flex: 1; min-width: 90px; padding: 10px 16px; text-align: center;
+      border: none; background: transparent; border-radius: var(--radius-sm); font-size: 13px;
+      font-weight: 600; font-family: var(--font); color: var(--text-secondary);
+      cursor: pointer; transition: all var(--transition); white-space: nowrap;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .nav-tab:hover { background: var(--bg); color: var(--text); }
+    .nav-tab.active { background: var(--primary); color: #fff; box-shadow: var(--shadow-sm); }
+    .nav-tab .material-symbols-outlined { font-size: 18px; }
+    .tab-content { display: none; animation: fadeIn 0.25s ease; }
+    .tab-content.active { display: block; }
+
+    .rules-grid { display: grid; gap: 12px; }
+    .rule-card {
+      display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-light);
+    }
+    .rule-card .fields { flex: 1; display: flex; gap: 12px; flex-wrap: wrap; }
+    .rule-card .fields .form-group { flex: 1; min-width: 90px; margin-bottom: 0; }
+    .rule-card .fields .form-group label { font-size: 10px; margin-bottom: 3px; }
+    .rule-card .fields .form-group input { padding: 7px 10px; font-size: 13px; }
+
+    .table-wrap { overflow-x: auto; }
+    .table-wrap::-webkit-scrollbar { height: 4px; }
+    .table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+    table thead th {
+      text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600;
+      color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+    }
+    table thead th:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+    table thead th:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+    table tbody tr { transition: background var(--transition); }
+    table tbody tr:hover { background: var(--bg); }
+    table tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    table .actions { display: flex; gap: 6px; }
+
+    .map-wrap { border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border-light); }
+    .map-container { height: 520px; width: 100%; }
+    .leaflet-container { height: 100%; width: 100%; font-family: var(--font) !important; }
+    .leaflet-popup-content-wrapper { border-radius: var(--radius-lg) !important; box-shadow: var(--shadow-lg) !important; }
+    .leaflet-popup-content { margin: 14px 18px !important; min-width: 240px; }
+    .leaflet-popup-tip { box-shadow: none !important; }
+    .custom-popup .popup-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .custom-popup .popup-header .name { font-weight: 700; font-size: 15px; }
+    .popup-services { max-height: 180px; overflow-y: auto; font-size: 13px; }
+    .popup-services::-webkit-scrollbar { width: 3px; }
+    .popup-services::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .popup-services table { width: 100%; border-collapse: collapse; }
+    .popup-services th { text-align: left; font-size: 11px; color: var(--text-secondary); padding: 3px 8px; border-bottom: 1px solid var(--border-light); font-weight: 600; }
+    .popup-services td { padding: 3px 8px; border-bottom: 1px solid #f8fafc; }
+    .popup-total { font-size: 14px; font-weight: 700; text-align: center; padding: 8px 12px; margin-top: 8px; border-radius: var(--radius-sm); }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .summary-card {
+      display: flex; align-items: center; gap: 14px; padding: 16px;
+      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-light); transition: all var(--transition);
+    }
+    .summary-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .summary-card .info { flex: 1; min-width: 0; }
+    .summary-card .info .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .summary-card .info .ups { font-size: 18px; font-weight: 800; margin-top: 2px; }
+    .summary-card .info .money { font-size: 12px; color: var(--money); font-weight: 600; }
+    .summary-card .info .count { font-size: 11px; color: var(--text-muted); }
+
+    .service-card-grid { display: grid; gap: 10px; }
+    .service-card-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-light); transition: all var(--transition);
+    }
+    .service-card-item:hover { box-shadow: var(--shadow); }
+    .service-card-item .sc-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--primary-bg); display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .service-card-item .sc-icon .material-symbols-outlined { color: var(--primary); font-size: 20px; }
+    .service-card-item .sc-body { flex: 1; min-width: 0; }
+    .service-card-item .sc-body .sc-name { font-weight: 600; font-size: 14px; }
+    .service-card-item .sc-body .sc-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .service-card-item .sc-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .tag { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .tag-active { background: var(--success-bg); color: var(--success); }
+    .tag-inactive { background: var(--danger-bg); color: var(--danger); }
+
+    .calc-display {
+      background: var(--primary-bg); border-radius: var(--radius-sm);
+      padding: 12px 16px; margin-bottom: 14px; display: flex;
+      justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .calc-display .calc-item { text-align: center; flex: 1; min-width: 80px; }
+    .calc-display .calc-item .calc-value { font-size: 20px; font-weight: 800; color: var(--primary); }
+    .calc-display .calc-item .calc-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; }
+    .calc-display .calc-item .calc-value.money { color: var(--money); }
+
+    .status-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      margin-right: 6px; vertical-align: middle;
+    }
+    .status-online { color: var(--success); }
+    .status-online .status-dot { background: var(--success); }
+    .status-offline { color: var(--text-muted); }
+    .status-offline .status-dot { background: var(--text-muted); }
+    .status-label { font-size: 12px; font-weight: 500; }
+    .classe-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; text-align: center; margin-bottom: 2px; }
+    .badge-wrap { display: flex; flex-direction: column; align-items: center; }
+    .grade-input { width: 80px !important; }
+    .grade-display { font-size: 12px; color: var(--text-secondary); background: var(--bg); padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+    .custom-marker { background: transparent !important; border: none !important; box-shadow: none !important; }
+    .map-container { height: 520px; width: 100%; background: #eee; }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10000; backdrop-filter: blur(4px);
+    }
+    .modal-content {
+      background: var(--card); width: 90%; max-width: 600px;
+      border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+      animation: fadeIn 0.2s ease; overflow: hidden;
+    }
+    .modal-header {
+      padding: 20px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-header h2 { font-size: 18px; font-weight: 700; }
+    .modal-body { padding: 20px; }
+    .modal-stats-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg); padding: 16px; border-radius: var(--radius);
+      border: 1px solid var(--border-light); text-align: center;
+    }
+    .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px; }
+    .stat-value { font-size: 24px; font-weight: 800; color: var(--primary); }
+    .stat-value.money { color: var(--money); }
+    .modal-details h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--text-secondary); }
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+    .empty-state .material-symbols-outlined { font-size: 40px; color: var(--text-muted); margin-bottom: 8px; }
+    .empty-state p { font-size: 14px; }
+
+    @media (max-width: 640px) {
+      .view { padding: 12px; }
+      .card { padding: 16px; }
+      .form-row { flex-direction: column; gap: 0; }
+      .rule-card { flex-direction: column; }
+      .rule-card .fields { width: 100%; }
+      .topbar { flex-wrap: wrap; padding: 12px 14px; gap: 8px; }
+      .topbar-right { width: 100%; justify-content: flex-end; }
+      .map-container { height: 320px; }
+      table { font-size: 13px; }
+      table thead th, table tbody td { padding: 8px 10px; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .login-card { padding: 28px 24px 24px; }
+      .service-item .del-btn { opacity: 1; }
+      .nav-tab { min-width: 70px; padding: 8px 10px; font-size: 12px; }
+      .nav-tab .material-symbols-outlined { font-size: 16px; }
+      .calc-display { flex-direction: column; }
+      .calc-display .calc-item { width: 100%; }
+    }
+
+    @media (min-width: 641px) and (max-width: 1024px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="loader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Carregando...</div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<!-- ========== LOGIN ========== -->
+<div id="loginView" class="active">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="material-symbols-outlined">monitoring</span>
+    </div>
+    <div id="connStatus" class="conn-status">Verificando conexão com o servidor...</div>
+    <div class="login-header">
+      <h1>Sistema UPS</h1>
+      <p>Classificação de Equipes</p>
+    </div>
+    <div id="loginMsg" class="msg"></div>
+    <div class="form-group">
+      <label>Usuário</label>
+      <div class="login-input-wrapper">
+        <span class="material-symbols-outlined">person</span>
+        <input type="text" class="login-input" id="loginUser" placeholder="Seu nome de usuário" autocomplete="off">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <div class="login-input-wrapper">
+        <span class="material-symbols-outlined">lock</span>
+        <input type="password" class="login-input" id="loginPass" placeholder="Sua senha">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="doLogin()">
+      <span class="material-symbols-outlined">login</span> Entrar
+    </button>
+  </div>
+</div>
+
+<!-- ========== TEAM VIEW ========== -->
+<div id="teamView" class="view">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-avatar"><span class="material-symbols-outlined">group</span></div>
+      <h2 id="teamUserName">Equipe</h2>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-info">
+        <span class="material-symbols-outlined">calendar_today</span>
+        <span id="teamDate"></span>
+      </span>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">
+        <span class="material-symbols-outlined">logout</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="class-display" id="teamSummary">
+    <div class="badge-wrap">
+      <div class="classe-label">Classe</div>
+      <div class="badge badge-lg" id="teamBadge">-</div>
+    </div>
+    <div class="info">
+      <div class="label">UPS hoje</div>
+      <div class="total" id="teamTotal">0</div>
+      <div class="total-money" id="teamTotalMoney">R$ 0,00</div>
+      <div class="meta">
+        <span id="teamCount">0 serviços</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span class="material-symbols-outlined">add_circle</span>
+      Adicionar Serviço
+    </div>
+    <div id="teamFormMsg" class="msg"></div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Serviço</label>
+        <select id="teamCatalogSelect" onchange="onTeamServiceSelect()">
+          <option value="">Carregando...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Quantidade</label>
+        <input type="number" id="teamQuantity" value="1" min="1" oninput="onTeamQuantityChange()">
+      </div>
+      <div class="form-group">
+        <label>Nota</label>
+        <input type="number" class="grade-input" id="teamGrade" value="0" step="0.01" oninput="onTeamGradeChange()">
+      </div>
+    </div>
+
+    <div class="calc-display" id="teamCalcDisplay" style="display:none;">
+      <div class="calc-item">
+        <div class="calc-value" id="teamCalcUps">0</div>
+        <div class="calc-label">UPS</div>
+      </div>
+      <div class="calc-item">
+        <div class="calc-value money" id="teamCalcMoney">R$ 0,00</div>
+        <div class="calc-label">Valor</div>
+      </div>
+      <div class="calc-item">
+        <div class="calc-value" id="teamCalcQty">0</div>
+        <div class="calc-label">Unidades</div>
+      </div>
+      <div class="calc-item">
+        <div class="calc-value" id="teamCalcGrade">0</div>
+        <div class="calc-label">Nota</div>
+      </div>
+    </div>
+
+    <button class="btn btn-success btn-block" onclick="addTeamService()">
+      <span class="material-symbols-outlined">check_circle</span> Adicionar
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <span class="material-symbols-outlined">today</span>
+      Serviços de Hoje
+    </div>
+    <div id="teamServiceList"><div class="empty-state"><span class="material-symbols-outlined">assignment</span><p>Nenhum serviço registrado hoje</p></div></div>
+  </div>
+</div>
+
+<!-- ========== ADMIN VIEW ========== -->
+<div id="adminView" class="view">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-avatar"><span class="material-symbols-outlined">admin_panel_settings</span></div>
+      <h2>Administração</h2>
+      <span class="topbar-info">
+        <span class="material-symbols-outlined">calendar_today</span>
+        <span id="adminDate"></span>
+      </span>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-filters" style="display:flex; align-items:center; gap:8px; margin-right:12px;">
+        <input type="date" id="adminStartDate" style="width:130px; padding:4px 8px; font-size:12px;">
+        <span style="color:var(--text-muted); font-size:12px;">até</span>
+        <input type="date" id="adminEndDate" style="width:130px; padding:4px 8px; font-size:12px;">
+      </div>
+      <button class="btn btn-money btn-sm" onclick="exportData()">
+        <span class="material-symbols-outlined">download</span> Exportar
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">
+        <span class="material-symbols-outlined">logout</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="nav-tabs" id="adminTabs">
+    <button class="nav-tab active" data-tab="tabPainel">
+      <span class="material-symbols-outlined">dashboard</span> Painel
+    </button>
+    <button class="nav-tab" data-tab="tabEquipes">
+      <span class="material-symbols-outlined">groups</span> Equipes
+    </button>
+    <button class="nav-tab" data-tab="tabServicos">
+      <span class="material-symbols-outlined">build</span> Serviços
+    </button>
+    <button class="nav-tab" data-tab="tabRegras">
+      <span class="material-symbols-outlined">tune</span> Regras
+    </button>
+    <button class="nav-tab" data-tab="tabMapa">
+      <span class="material-symbols-outlined">map</span> Mapa
+    </button>
+  </div>
+
+  <!-- Tab: Painel -->
+  <div class="tab-content active" id="tabPainel">
+    <div class="card">
+      <div class="card-title">
+        <span class="material-symbols-outlined">summarize</span>
+        Resumo das Equipes - Hoje
+      </div>
+      <div id="adminPainelContent"><div class="empty-state"><span class="material-symbols-outlined">hourglass_empty</span><p>Carregando...</p></div></div>
+    </div>
+  </div>
+
+  <!-- Tab: Equipes -->
+  <div class="tab-content" id="tabEquipes">
+    <div class="card">
+      <div class="card-title">
+        <span class="material-symbols-outlined">person_add</span>
+        Nova Equipe
+      </div>
+      <div id="teamFormMsgAdmin" class="msg"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nome da Equipe</label>
+          <input type="text" id="newTeamName" placeholder="Nome da equipe">
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="text" id="newTeamPass" placeholder="Senha de acesso">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Latitude</label>
+          <input type="number" id="newTeamLat" placeholder="Ex: -15.7939" step="any">
+        </div>
+        <div class="form-group">
+          <label>Longitude</label>
+          <input type="number" id="newTeamLng" placeholder="Ex: -47.8828" step="any">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="createTeam()">
+        <span class="material-symbols-outlined">add</span> Criar Equipe
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="material-symbols-outlined">list_alt</span>
+        Equipes Cadastradas
+      </div>
+      <div id="teamsList"><div class="empty-state"><span class="material-symbols-outlined">hourglass_empty</span><p>Carregando...</p></div></div>
+    </div>
+  </div>
+
+  <!-- Tab: Serviços (Catálogo) -->
+  <div class="tab-content" id="tabServicos">
+    <div class="card">
+      <div class="card-title">
+        <span class="material-symbols-outlined">note_add</span>
+        Novo Serviço
+      </div>
+      <div id="catalogFormMsg" class="msg"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nome do Serviço</label>
+          <input type="text" id="catalogName" placeholder="Ex: Instalação">
+        </div>
+        <div class="form-group">
+          <label>Valor UPS (por unidade)</label>
+          <input type="number" id="catalogUps" placeholder="10" min="0" step="0.5">
+        </div>
+        <div class="form-group">
+          <label>Valor R$ (por unidade)</label>
+          <input type="number" id="catalogMoney" placeholder="50,00" min="0" step="0.01">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="createCatalogService()">
+        <span class="material-symbols-outlined">add</span> Cadastrar Serviço
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span class="material-symbols-outlined">build</span>
+        Serviços Cadastrados
+      </div>
+      <div id="catalogList"><div class="empty-state"><span class="material-symbols-outlined">hourglass_empty</span><p>Carregando...</p></div></div>
+    </div>
+  </div>
+
+  <!-- Tab: Regras -->
+  <div class="tab-content" id="tabRegras">
+    <div class="card">
+      <div class="card-title">
+        <span class="material-symbols-outlined">tune</span>
+        Regras de Classificação
+      </div>
+      <p class="card-subtitle">Defina os intervalos de UPS para cada classe. Salve após alterar.</p>
+      <div id="rulesFormMsg" class="msg"></div>
+      <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+        <button class="btn btn-outline btn-sm" onclick="addRule()">
+          <span class="material-symbols-outlined">add</span> Adicionar Regra
+        </button>
+      </div>
+      <div id="rulesContainer"></div>
+      <button class="btn btn-primary btn-block" onclick="saveRules()">
+        <span class="material-symbols-outlined">save</span> Salvar Regras
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab: Mapa -->
+  <div class="tab-content" id="tabMapa">
+    <div class="map-wrap">
+      <div class="map-container" id="map"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== MODAL DETALHES EQUIPE ========== -->
+<div id="teamModal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTeamName">Detalhes da Equipe</h2>
+      <button class="btn btn-ghost btn-icon" onclick="closeTeamModal()"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total UPS</div>
+          <div class="stat-value" id="modalTotalUps">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Ganho</div>
+          <div class="stat-value money" id="modalTotalMoney">R$ 0,00</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Serviços</div>
+          <div class="stat-value" id="modalSrvCount">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Classe</div>
+          <div class="stat-value" id="modalClass">-</div>
+        </div>
+      </div>
+      <div class="modal-details">
+        <h3>Serviços no Período</h3>
+        <div id="modalServiceList" class="table-wrap"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Shim: google.script.run -> fetch /api/rpc (para rodar local com Node)
+if (typeof google === 'undefined' || !google.script || !google.script.run) {
+  (function() {
+    var handlers = { success: null, failure: null };
+    var proxy = {
+      withSuccessHandler: function(fn) { handlers.success = fn; return proxy; },
+      withFailureHandler: function(fn) { handlers.failure = fn; return proxy; }
+    };
+    var rpc = function(method) {
+      return function() {
+        var args = Array.prototype.slice.call(arguments);
+        var s = handlers.success, f = handlers.failure;
+        handlers.success = handlers.failure = null;
+        fetch('/api/rpc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ method: method, args: args })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error && f) f(data.error);
+          else if (s) s(data);
+        })
+        .catch(function(e) {
+          if (f) f({ message: e.message || 'Erro de conexao' });
+        });
+        return proxy;
+      };
+    };
+    var methods = ['checkConnection','authenticate','getUsers','getTeams','getUser',
+      'createUser','deleteUser','resetPassword','updateUserLocation',
+      'getCatalogServices','getActiveCatalogServices','createCatalogService',
+      'updateCatalogService','deleteCatalogService',
+      'addService','addServiceFromCatalog','getTodayServices','getServicesByDate',
+      'getDailySummary','getAllTeamsDailySummary',
+      'getClassificationRules','saveClassificationRules','deleteService',
+      'updateLastSeen','getUserStatuses','exportServicesForPeriod'];
+    var run = {};
+    for (var i = 0; i < methods.length; i++) run[methods[i]] = rpc(methods[i]);
+    run.withSuccessHandler = function(fn) { handlers.success = fn; return run; };
+    run.withFailureHandler = function(fn) { handlers.failure = fn; return run; };
+    window.google = { script: { run: run } };
+  })();
+}
+
+var currentUser = null;
+var map = null;
+var mapMarkers = [];
+var refreshInterval = null;
+var teamCatalogCache = [];
+
+function $(id) { return document.getElementById(id); }
+
+function toast(text, type) {
+  type = type || 'info';
+  var container = $('toastContainer');
+  var el = document.createElement('div');
+  var icons = { success: 'check_circle', error: 'error', warning: 'warning', info: 'info' };
+  el.className = 'toast toast-' + type;
+  el.innerHTML = '<span class="material-symbols-outlined">' + (icons[type] || 'info') + '</span>' + text;
+  container.appendChild(el);
+  setTimeout(function() {
+    el.classList.add('removing');
+    setTimeout(function() { el.remove(); }, 250);
+  }, 3500);
+}
+
+function showMsg(id, type, text) {
+  var el = $(id);
+  if (!el) return;
+  var icons = { error: 'error', success: 'check_circle' };
+  el.className = 'msg ' + type;
+  el.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">' + (icons[type] || 'info') + '</span> ' + text;
+  if (type === 'success') {
+    setTimeout(function() { el.style.display = 'none'; }, 3500);
+  }
+}
+
+function clearMsg(id) {
+  var el = $(id);
+  if (el) { el.className = 'msg'; el.style.display = 'none'; }
+}
+
+function showView(id) {
+  var views = document.querySelectorAll('.view, #loginView');
+  for (var i = 0; i < views.length; i++) views[i].classList.remove('active');
+  var target = $(id);
+  if (target) target.classList.add('active');
+}
+
+function loading(show) {
+  $('loadingOverlay').classList.toggle('hidden', !show);
+}
+
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+function formatDateBr(dateStr) {
+  var parts = dateStr.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function fmtMoney(v) {
+  return 'R$ ' + Number(v).toFixed(2).replace('.', ',');
+}
+
+// ===== LOGIN =====
+function doLogin() {
+  var username = $('loginUser').value.trim();
+  var password = $('loginPass').value;
+  if (!username || !password) {
+    showMsg('loginMsg', 'error', 'Preencha usuário e senha');
+    return;
+  }
+  clearMsg('loginMsg');
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) {
+        currentUser = result;
+        toast('Bem-vindo, ' + result.username + '!', 'success');
+        if (result.role === 'admin') {
+          initAdminView();
+        } else {
+          initTeamView();
+        }
+      } else {
+        showMsg('loginMsg', 'error', result.message);
+      }
+    })
+    .withFailureHandler(function(err) {
+      loading(false);
+      showMsg('loginMsg', 'error', 'Erro de conexão: ' + err.message);
+    })
+    .authenticate(username, password);
+}
+
+function logout() {
+  if (refreshInterval) { clearInterval(refreshInterval); refreshInterval = null; }
+  if (window.heartbeatInterval) { clearInterval(window.heartbeatInterval); window.heartbeatInterval = null; }
+  stopLocationTracking();
+  if (map) { map.remove(); map = null; }
+  mapMarkers = [];
+  currentUser = null;
+  $('loginUser').value = '';
+  $('loginPass').value = '';
+  showView('loginView');
+  toast('Sessão encerrada', 'info');
+}
+
+// ===== TEAM VIEW =====
+function initTeamView() {
+  $('teamUserName').textContent = currentUser.username;
+  $('teamDate').textContent = formatDateBr(todayStr());
+  showView('teamView');
+  loadTeamCatalog();
+  refreshTeamView();
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(refreshTeamView, 30000);
+  // Heartbeat: update last_seen every 2 minutes
+  heartbeat();
+  if (window.heartbeatInterval) clearInterval(window.heartbeatInterval);
+  window.heartbeatInterval = setInterval(heartbeat, 120000);
+  // Start tracking location
+  startLocationTracking();
+}
+
+function heartbeat() {
+  if (!currentUser) return;
+  google.script.run
+    .withFailureHandler(function(err) { console.error('Heartbeat error:', err); })
+    .updateLastSeen(currentUser.id);
+}
+
+var watchId = null;
+
+function startLocationTracking() {
+  if (!navigator.geolocation) return;
+  if (watchId !== null) return;
+  watchId = navigator.geolocation.watchPosition(function(pos) {
+    if (!currentUser) return;
+    var lat = pos.coords.latitude;
+    var lng = pos.coords.longitude;
+    google.script.run
+      .withFailureHandler(function(err) { console.error('Location update error:', err); })
+      .updateUserLocation(currentUser.id, lat, lng);
+  }, function(err) {
+    console.warn('Geolocation error:', err.message);
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 });
+}
+
+function stopLocationTracking() {
+  if (watchId !== null) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+}
+
+function loadTeamCatalog() {
+  google.script.run
+    .withSuccessHandler(function(services) {
+      teamCatalogCache = services;
+      var select = $('teamCatalogSelect');
+      if (!services || services.length === 0) {
+        select.innerHTML = '<option value="">Nenhum serviço disponível</option>';
+        return;
+      }
+      var html = '<option value="">Selecione um serviço...</option>';
+      for (var i = 0; i < services.length; i++) {
+        html += '<option value="' + services[i].id + '">' + escapeHtml(services[i].name) + ' (' + services[i].upsValue + ' UPS / ' + fmtMoney(services[i].moneyValue) + ')</option>';
+      }
+      select.innerHTML = html;
+    })
+    .getActiveCatalogServices();
+}
+
+function onTeamServiceSelect() {
+  var select = $('teamCatalogSelect');
+  var qty = parseInt($('teamQuantity').value) || 1;
+  var grade = parseFloat($('teamGrade').value) || 0;
+  var calc = $('teamCalcDisplay');
+
+  if (!select.value) {
+    calc.style.display = 'none';
+    return;
+  }
+
+  var svc = null;
+  for (var i = 0; i < teamCatalogCache.length; i++) {
+    if (teamCatalogCache[i].id == select.value) { svc = teamCatalogCache[i]; break; }
+  }
+  if (!svc) { calc.style.display = 'none'; return; }
+
+  $('teamCalcUps').textContent = svc.upsValue * qty;
+  $('teamCalcMoney').textContent = fmtMoney(svc.moneyValue * qty);
+  $('teamCalcQty').textContent = qty;
+  $('teamCalcGrade').textContent = grade;
+  calc.style.display = 'flex';
+}
+
+function onTeamGradeChange() {
+  onTeamServiceSelect();
+}
+
+function onTeamQuantityChange() {
+  onTeamServiceSelect();
+}
+
+function addTeamService() {
+  var select = $('teamCatalogSelect');
+  var qty = parseInt($('teamQuantity').value) || 1;
+  var grade = parseFloat($('teamGrade').value) || 0;
+
+  if (!select.value) { showMsg('teamFormMsg', 'error', 'Selecione um serviço'); return; }
+  if (qty < 1) { showMsg('teamFormMsg', 'error', 'Quantidade inválida'); return; }
+  if (isNaN(grade)) { showMsg('teamFormMsg', 'error', 'Nota inválida'); return; }
+
+  var svc = null;
+  for (var i = 0; i < teamCatalogCache.length; i++) {
+    if (teamCatalogCache[i].id == select.value) { svc = teamCatalogCache[i]; break; }
+  }
+  if (!svc) { showMsg('teamFormMsg', 'error', 'Serviço não encontrado'); return; }
+
+  var totalUps = svc.upsValue * qty;
+  var totalMoney = svc.moneyValue * qty;
+
+  // Get current position if available
+  var lat = '';
+  var lng = '';
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+      submitService(svc, qty, grade, totalUps, totalMoney, lat, lng);
+    }, function() {
+      submitService(svc, qty, grade, totalUps, totalMoney, '', '');
+    }, { enableHighAccuracy: true, timeout: 5000 });
+  } else {
+    submitService(svc, qty, grade, totalUps, totalMoney, '', '');
+  }
+}
+
+function submitService(svc, qty, grade, totalUps, totalMoney, lat, lng) {
+  clearMsg('teamFormMsg');
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) {
+        $('teamCatalogSelect').value = '';
+        $('teamQuantity').value = '1';
+        $('teamGrade').value = '0';
+        $('teamCalcDisplay').style.display = 'none';
+        toast('Serviço adicionado!', 'success');
+        refreshTeamView();
+      }
+    })
+    .withFailureHandler(function(err) {
+      loading(false);
+      showMsg('teamFormMsg', 'error', 'Erro: ' + err.message);
+    })
+    .addServiceFromCatalog(currentUser.id, svc.id, svc.name, totalUps, qty, svc.upsValue, svc.moneyValue, totalMoney, todayStr(), grade, lat, lng);
+}
+
+function refreshTeamView() {
+  if (!currentUser) return;
+  google.script.run
+    .withSuccessHandler(function(summary) {
+      renderTeamSummary(summary);
+      renderTeamServices(summary.services);
+    })
+    .withFailureHandler(function(err) {
+      console.error('Erro ao atualizar:', err);
+    })
+    .getDailySummary(currentUser.id, todayStr());
+}
+
+function renderTeamSummary(summary) {
+  var badge = $('teamBadge');
+  badge.textContent = summary.class;
+  badge.style.background = summary.color || '#94a3b8';
+  $('teamTotal').textContent = summary.totalUps;
+  $('teamTotalMoney').textContent = fmtMoney(summary.totalMoney || 0);
+  $('teamCount').textContent = summary.count + ' servi\u00E7o' + (summary.count !== 1 ? 's' : '') + ' hoje';
+}
+
+function renderTeamServices(services) {
+  var container = $('teamServiceList');
+  if (!services || services.length === 0) {
+    container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">assignment</span><p>Nenhum servi\u00E7o registrado hoje</p></div>';
+    return;
+  }
+  var html = '<div class="service-list">';
+  for (var i = 0; i < services.length; i++) {
+    var s = services[i];
+    var detail = '';
+    if (s.quantity > 1) {
+      detail = s.quantity + ' un \u00D7 ' + s.upsPerUnit + ' UPS = ' + s.upsValue + ' UPS';
+      if (s.totalMoney) detail += ' | ' + fmtMoney(s.totalMoney);
+    } else if (s.totalMoney) {
+      detail = fmtMoney(s.totalMoney);
+    }
+    if (s.grade > 0) detail += (detail ? ' | ' : '') + 'Nota: ' + s.grade;
+    html += '<div class="service-item">' +
+      '<div class="srv-icon"><span class="material-symbols-outlined">task_alt</span></div>' +
+      '<div class="srv-body">' +
+      '<span class="name">' + escapeHtml(s.serviceName) + '</span>' +
+      (detail ? '<span class="detail">' + detail + '</span>' : '') +
+      '</div>' +
+      '<div class="srv-values">' +
+      (s.grade > 0 ? '<span class="grade-display">' + s.grade + '</span>' : '') +
+      '<span class="ups">' + s.upsValue + ' UPS</span>' +
+      (s.totalMoney ? '<span class="money">' + fmtMoney(s.totalMoney) + '</span>' : '') +
+      '</div>' +
+      '<button class="del-btn" onclick="deleteService(' + s.id + ')" title="Remover"><span class="material-symbols-outlined">close</span></button>' +
+      '</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function deleteService(serviceId) {
+  if (!confirm('Remover este servi\u00E7o?')) return;
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) { toast('Servi\u00E7o removido', 'info'); refreshTeamView(); }
+    })
+    .withFailureHandler(function(err) { loading(false); toast('Erro: ' + err.message, 'error'); })
+    .deleteService(serviceId);
+}
+
+// ===== ADMIN VIEW =====
+function initAdminView() {
+  var today = todayStr();
+  $('adminStartDate').value = today;
+  $('adminEndDate').value = today;
+
+  $('adminDate').textContent = formatDateBr(today);
+  showView('adminView');
+  initTabs();
+  loadAllAdminData();
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(loadAllAdminData, 30000);
+
+  // Listen for date changes
+  $('adminStartDate').addEventListener('change', loadAllAdminData);
+  $('adminEndDate').addEventListener('change', loadAllAdminData);
+}
+
+function initTabs() {
+  var tabs = document.querySelectorAll('.nav-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener('click', function() {
+      var activeTab = document.querySelector('.nav-tab.active');
+      if (activeTab) activeTab.classList.remove('active');
+      this.classList.add('active');
+
+      var activeContent = document.querySelector('.tab-content.active');
+      if (activeContent) activeContent.classList.remove('active');
+
+      var tabId = this.getAttribute('data-tab');
+      $(tabId).classList.add('active');
+
+      if (tabId === 'tabMapa') {
+        setTimeout(initMap, 100);
+      }
+    });
+  }
+}
+
+function loadAllAdminData() {
+  var start = $('adminStartDate').value;
+  var end = $('adminEndDate').value;
+  loadPainel(start, end);
+  loadTeamsList();
+  loadCatalogList();
+  loadRules();
+  loadMapData(start, end);
+}
+
+// --- Painel ---
+function loadPainel(start, end) {
+  google.script.run
+    .withSuccessHandler(function(data) { renderPainel(data); })
+    .getAllTeamsSummaryForPeriod(start, end);
+}
+
+function getStatusInfo(lastSeen) {
+  if (!lastSeen) return { status: 'offline', label: 'Offline', className: 'status-offline' };
+  var now = new Date();
+  var last = new Date(lastSeen.replace(' ', 'T'));
+  var diffMin = (now - last) / 60000;
+  if (diffMin < 5) return { status: 'online', label: 'Online', className: 'status-online' };
+  return { status: 'offline', label: 'Visto: ' + lastSeen, className: 'status-offline' };
+}
+
+function renderPainel(data) {
+  var container = $('adminPainelContent');
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">groups</span><p>Nenhuma equipe cadastrada</p></div>';
+    return;
+  }
+  var html = '<div class="summary-grid">';
+  for (var i = 0; i < data.length; i++) {
+    var t = data[i];
+    var color = t.color || '#94a3b8';
+    var statusInfo = getStatusInfo(t.lastSeen);
+    html += '<div class="summary-card" ondblclick="openTeamModal(' + t.userId + ')">' +
+      '<div class="badge badge-sm" style="background:' + color + ';">' + t.class + '</div>' +
+      '<div class="info">' +
+      '<div class="name">' + escapeHtml(t.username) + '</div>' +
+      '<div class="' + statusInfo.className + '"><span class="status-dot"></span><span class="status-label">' + statusInfo.label + '</span></div>' +
+      '<div class="ups">' + t.totalUps + ' UPS</div>' +
+      (t.totalMoney ? '<div class="money">' + fmtMoney(t.totalMoney) + '</div>' : '') +
+      '<div class="count">' + t.count + ' servi\u00E7o' + (t.count !== 1 ? 's' : '') + '</div>' +
+      '</div></div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// --- Equipes ---
+function loadTeamsList() {
+  google.script.run
+    .withSuccessHandler(function(users) {
+      google.script.run
+        .withSuccessHandler(function(statuses) { renderTeamsList(users, statuses); })
+        .withFailureHandler(function() { renderTeamsList(users, []); })
+        .getUserStatuses();
+    })
+    .getUsers();
+}
+
+function renderTeamsList(users, statuses) {
+  var container = $('teamsList');
+  var teams = users.filter(function(u) { return u.role !== 'admin'; });
+  if (teams.length === 0) {
+    container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">groups</span><p>Nenhuma equipe cadastrada</p></div>';
+    return;
+  }
+  var statusMap = {};
+  if (statuses) {
+    for (var si = 0; si < statuses.length; si++) statusMap[statuses[si].id] = statuses[si];
+  }
+  var html = '<div class="table-wrap"><table><thead><tr><th>ID</th><th>Nome</th><th>Status</th><th>Função</th><th>Ações</th></tr></thead><tbody>';
+  for (var i = 0; i < teams.length; i++) {
+    var t = teams[i];
+    var st = statusMap[t.id];
+    var statusHtml = '<span class="status-offline"><span class="status-dot"></span><span class="status-label">Offline</span></span>';
+    if (st) {
+      var sc = st.status === 'online' ? 'status-online' : 'status-offline';
+      var sl = st.statusLabel;
+      if (st.status === 'offline' && st.lastSeen) sl = 'Visto: ' + st.lastSeen;
+      statusHtml = '<span class="' + sc + '"><span class="status-dot"></span><span class="status-label">' + sl + '</span></span>';
+    }
+    html += '<tr>' +
+      '<td style="font-weight:600;color:var(--text-muted);">#' + t.id + '</td>' +
+      '<td><strong>' + escapeHtml(t.username) + '</strong></td>' +
+      '<td>' + statusHtml + '</td>' +
+      '<td><span style="background:var(--primary-bg);color:var(--primary);padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;">' + t.role + '</span></td>' +
+      '<td class="actions">' +
+      '<button class="btn btn-sm btn-outline" onclick="showResetPass(' + t.id + ')"><span class="material-symbols-outlined">key</span> Senha</button>' +
+      '<button class="btn btn-sm btn-danger" onclick="deleteTeam(' + t.id + ')"><span class="material-symbols-outlined">delete</span></button>' +
+      '</td></tr>';
+  }
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+function createTeam() {
+  var name = $('newTeamName').value.trim();
+  var pass = $('newTeamPass').value.trim();
+  var lat = $('newTeamLat').value;
+  var lng = $('newTeamLng').value;
+  if (!name || !pass) { showMsg('teamFormMsgAdmin', 'error', 'Preencha nome e senha da equipe'); return; }
+  clearMsg('teamFormMsgAdmin');
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) {
+        $('newTeamName').value = '';
+        $('newTeamPass').value = '';
+        $('newTeamLat').value = '';
+        $('newTeamLng').value = '';
+        toast('Equipe criada com sucesso!', 'success');
+        loadAllAdminData();
+      }
+    })
+    .withFailureHandler(function(err) { loading(false); showMsg('teamFormMsgAdmin', 'error', 'Erro: ' + err.message); })
+    .createUser(name, pass, 'equipe', lat, lng);
+}
+
+function deleteTeam(id) {
+  if (!confirm('Excluir esta equipe?')) return;
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) { toast('Equipe excluída', 'info'); loadAllAdminData(); }
+    })
+    .withFailureHandler(function(err) { loading(false); toast('Erro: ' + err.message, 'error'); })
+    .deleteUser(id);
+}
+
+function showResetPass(id) {
+  var newPass = prompt('Nova senha para a equipe:');
+  if (!newPass || newPass.length < 3) return;
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) { toast('Senha redefinida!', 'success'); loadAllAdminData(); }
+    })
+    .withFailureHandler(function(err) { loading(false); toast('Erro: ' + err.message, 'error'); })
+    .resetPassword(id, newPass);
+}
+
+// --- Catálogo de Serviços ---
+function loadCatalogList() {
+  google.script.run
+    .withSuccessHandler(function(services) { renderCatalogList(services); })
+    .getCatalogServices();
+}
+
+function renderCatalogList(services) {
+  var container = $('catalogList');
+  if (!services || services.length === 0) {
+    container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">build</span><p>Nenhum serviço cadastrado</p></div>';
+    return;
+  }
+  var html = '<div class="service-card-grid">';
+  for (var i = 0; i < services.length; i++) {
+    var s = services[i];
+    var activeTag = s.active
+      ? '<span class="tag tag-active">Ativo</span>'
+      : '<span class="tag tag-inactive">Inativo</span>';
+    var editId = 'catalogEdit_' + s.id;
+    html += '<div class="service-card-item" id="' + editId + '_card">' +
+      '<div class="sc-icon"><span class="material-symbols-outlined">build</span></div>' +
+      '<div class="sc-body">' +
+      '<div class="sc-name">' + escapeHtml(s.name) + ' ' + activeTag + '</div>' +
+      '<div class="sc-detail">' + s.upsValue + ' UPS / un  |  ' + fmtMoney(s.moneyValue) + ' / un</div>' +
+      '</div>' +
+      '<div class="sc-actions">' +
+      '<button class="btn btn-sm btn-outline" onclick="toggleEditCatalog(' + s.id + ')"><span class="material-symbols-outlined">edit</span></button>' +
+      '<button class="btn btn-sm btn-danger" onclick="deleteCatalogService(' + s.id + ')"><span class="material-symbols-outlined">delete</span></button>' +
+      '</div></div>' +
+      '<div class="card" id="' + editId + '" style="display:none;margin-top:-6px;">' +
+      '<div class="form-row">' +
+      '<div class="form-group"><label>Nome</label><input type="text" id="' + editId + '_name" value="' + escapeHtml(s.name) + '"></div>' +
+      '<div class="form-group"><label>UPS/un</label><input type="number" id="' + editId + '_ups" value="' + s.upsValue + '" min="0" step="0.5"></div>' +
+      '<div class="form-group"><label>R$/un</label><input type="number" id="' + editId + '_money" value="' + s.moneyValue + '" min="0" step="0.01"></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:8px;">' +
+      '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:500;">' +
+      '<input type="checkbox" id="' + editId + '_active" ' + (s.active ? 'checked' : '') + '> Ativo</label>' +
+      '<button class="btn btn-sm btn-success" onclick="saveCatalogEdit(' + s.id + ')"><span class="material-symbols-outlined">check</span> Salvar</button>' +
+      '<button class="btn btn-sm btn-ghost" onclick="toggleEditCatalog(' + s.id + ')">Cancelar</button>' +
+      '</div></div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function toggleEditCatalog(id) {
+  var editDiv = $('catalogEdit_' + id);
+  if (editDiv) editDiv.style.display = editDiv.style.display === 'none' ? 'block' : 'none';
+}
+
+function createCatalogService() {
+  var name = $('catalogName').value.trim();
+  var ups = parseFloat($('catalogUps').value);
+  var money = parseFloat($('catalogMoney').value);
+  if (!name) { showMsg('catalogFormMsg', 'error', 'Informe o nome do serviço'); return; }
+  if (isNaN(ups) || ups < 0) { showMsg('catalogFormMsg', 'error', 'Valor UPS inválido'); return; }
+  if (isNaN(money) || money < 0) { showMsg('catalogFormMsg', 'error', 'Valor em dinheiro inválido'); return; }
+  clearMsg('catalogFormMsg');
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) {
+        $('catalogName').value = '';
+        $('catalogUps').value = '';
+        $('catalogMoney').value = '';
+        toast('Serviço cadastrado!', 'success');
+        loadCatalogList();
+      }
+    })
+    .withFailureHandler(function(err) { loading(false); showMsg('catalogFormMsg', 'error', 'Erro: ' + err.message); })
+    .createCatalogService(name, ups, money);
+}
+
+function saveCatalogEdit(id) {
+  var editId = 'catalogEdit_' + id;
+  var name = $(editId + '_name').value.trim();
+  var ups = parseFloat($(editId + '_ups').value);
+  var money = parseFloat($(editId + '_money').value);
+  var active = $(editId + '_active').checked;
+  if (!name) { toast('Nome obrigatório', 'error'); return; }
+  if (isNaN(ups) || ups < 0) { toast('Valor UPS inválido', 'error'); return; }
+  if (isNaN(money) || money < 0) { toast('Valor em dinheiro inválido', 'error'); return; }
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) {
+        toast('Serviço atualizado!', 'success');
+        loadCatalogList();
+      }
+    })
+    .withFailureHandler(function(err) { loading(false); toast('Erro: ' + err.message, 'error'); })
+    .updateCatalogService(id, name, ups, money, active);
+}
+
+function deleteCatalogService(id) {
+  if (!confirm('Excluir este serviço do catálogo?')) return;
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) { toast('Serviço excluído', 'info'); loadCatalogList(); }
+    })
+    .withFailureHandler(function(err) { loading(false); toast('Erro: ' + err.message, 'error'); })
+    .deleteCatalogService(id);
+}
+
+function exportData() {
+  var start = $('adminStartDate').value;
+  var end = $('adminEndDate').value;
+  if (!start || !end) { toast('Selecione o período', 'error'); return; }
+  
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(data) {
+      loading(false);
+      if (!data || data.length === 0) {
+        toast('Nenhum dado para exportar no período', 'info');
+        return;
+      }
+      
+      var csv = '\uFEFF'; // UTF-8 BOM for Excel
+      var headers = Object.keys(data[0]);
+      csv += headers.join(';') + '\n';
+      
+      for (var i = 0; i < data.length; i++) {
+        var row = headers.map(function(h) {
+          var val = data[i][h];
+          return '"' + String(val).replace(/"/g, '""') + '"';
+        });
+        csv += row.join(';') + '\n';
+      }
+      
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement('a');
+      var url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'exportacao_ups_' + start + '_to_' + end + '.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast('Exportação concluída!', 'success');
+    })
+    .withFailureHandler(function(err) {
+      loading(false);
+      toast('Erro ao exportar: ' + err.message, 'error');
+    })
+    .exportServicesForPeriod(start, end);
+}
+function addRule() {
+  var container = $('rulesContainer');
+  var id = Date.now();
+  var html = '<div class="rule-card" data-rule-id="' + id + '">' +
+    '<div class="badge badge-sm" style="background:#94a3b8;">?</div>' +
+    '<div class="fields">' +
+    '<div class="form-group"><label>Classe</label><input type="text" class="rule-class" value="Nova Classe"></div>' +
+    '<div class="form-group"><label>Mínimo</label><input type="number" class="rule-min" value="0"></div>' +
+    '<div class="form-group"><label>Máximo</label><input type="number" class="rule-max" value="100"></div>' +
+    '<div class="form-group"><label>Cor</label><input type="color" class="rule-color" value="#94a3b8"></div>' +
+    '</div>' +
+    '<button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()"><span class="material-symbols-outlined">delete</span></button>' +
+    '</div>';
+  
+  if (container.querySelector('.empty-state')) {
+    container.innerHTML = '';
+  }
+  container.insertAdjacentHTML('beforeend', html);
+}
+
+function loadRules() {
+  google.script.run
+    .withSuccessHandler(function(rules) { renderRules(rules); })
+    .getClassificationRules();
+}
+
+function renderRules(rules) {
+  var container = $('rulesContainer');
+  if (!rules || rules.length === 0) {
+    container.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">tune</span><p>Nenhuma regra configurada</p></div>';
+    return;
+  }
+  var html = '<div class="rules-grid">';
+  for (var i = 0; i < rules.length; i++) {
+    var r = rules[i];
+    html += '<div class="rule-card" data-rule-id="' + r.id + '">' +
+      '<div class="badge badge-sm" style="background:' + r.color + ';">' + r.class + '</div>' +
+      '<div class="fields">' +
+      '<div class="form-group"><label>Classe</label><input type="text" class="rule-class" value="' + escapeHtml(r.class) + '"></div>' +
+      '<div class="form-group"><label>Mínimo</label><input type="number" class="rule-min" value="' + r.minUps + '"></div>' +
+      '<div class="form-group"><label>Máximo</label><input type="number" class="rule-max" value="' + r.maxUps + '"></div>' +
+      '<div class="form-group"><label>Cor</label><input type="color" class="rule-color" value="' + r.color + '"></div>' +
+      '</div>' +
+      '<button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()"><span class="material-symbols-outlined">delete</span></button>' +
+      '</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function saveRules() {
+  var cards = document.querySelectorAll('.rule-card');
+  var rules = [];
+  for (var i = 0; i < cards.length; i++) {
+    var card = cards[i];
+    rules.push({
+      id: parseInt(card.getAttribute('data-rule-id')),
+      class: card.querySelector('.rule-class').value,
+      minUps: parseInt(card.querySelector('.rule-min').value),
+      maxUps: parseInt(card.querySelector('.rule-max').value),
+      color: card.querySelector('.rule-color').value
+    });
+  }
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(result) {
+      loading(false);
+      if (result.success) { toast('Regras salvas!', 'success'); loadRules(); }
+    })
+    .withFailureHandler(function(err) { loading(false); toast('Erro: ' + err.message, 'error'); })
+    .saveClassificationRules(rules);
+}
+
+// --- Mapa ---
+function loadMapData(start, end) {
+  start = start || todayStr();
+  end = end || todayStr();
+  google.script.run
+    .withSuccessHandler(function(data) { updateMap(data); })
+    .getAllTeamsSummaryForPeriod(start, end);
+}
+
+var OWM_API_KEY = 'cb9a3186df512370a0b85db130ca34d1';
+
+function initMap() {
+  var container = $('map');
+  if (!container) {
+    console.error('Container do mapa nao encontrado');
+    return;
+  }
+  if (container._leaflet_id) {
+    console.log('Mapa ja inicializado');
+    return;
+  }
+  
+  try {
+    map = L.map('map', {
+      center: [-15.7939, -47.8828],
+      zoom: 5,
+      zoomControl: true
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(map);
+
+    var weatherLayer = L.tileLayer('https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=' + OWM_API_KEY, {
+      attribution: '&copy; <a href="https://openweathermap.org">OpenWeatherMap</a>',
+      opacity: 0.6,
+      maxZoom: 18
+    });
+
+    L.control.layers(null, { 'Temperatura': weatherLayer }, { collapsed: true }).addTo(map);
+    
+    toast('Mapa carregado!', 'success');
+    loadMapData();
+  } catch (e) {
+    console.error('Erro ao inicializar mapa:', e);
+    toast('Erro ao carregar mapa: ' + e.message, 'error');
+  }
+}
+
+function updateMap(data) {
+  if (!map) return;
+  for (var i = 0; i < mapMarkers.length; i++) map.removeLayer(mapMarkers[i]);
+  mapMarkers = [];
+  if (!data || data.length === 0) return;
+
+  var bounds = [];
+  for (var i = 0; i < data.length; i++) {
+    var team = data[i];
+    var lat = parseFloat(team.latitude);
+    var lng = parseFloat(team.longitude);
+    if (isNaN(lat) || isNaN(lng)) {
+      var angle = (i / data.length) * 2 * Math.PI;
+      var radius = 0.08;
+      lat = -15.7939 + radius * Math.cos(angle);
+      lng = -47.8828 + radius * Math.sin(angle);
+    }
+
+    var color = team.color || '#94a3b8';
+    var icon = L.divIcon({
+      className: 'custom-marker',
+      html: '<div style="background:' + color + ';width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);">' + team.class + '</div>',
+      iconSize: [38, 38],
+      iconAnchor: [19, 19],
+      popupAnchor: [0, -22]
+    });
+
+    var popupHtml = '<div class="custom-popup">' +
+      '<div class="popup-header">' +
+      '<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:' + color + ';color:#fff;font-weight:800;font-size:14px;">' + team.class + '</span>' +
+      '<span class="name">' + escapeHtml(team.username) + '</span>' +
+      '</div>';
+
+    if (team.services && team.services.length > 0) {
+      popupHtml += '<div class="popup-services"><table>' +
+        '<tr><th>Serviço</th><th>UPS</th><th>R$</th></tr>';
+      for (var j = 0; j < team.services.length; j++) {
+        var sv = team.services[j];
+        popupHtml += '<tr><td>' + escapeHtml(sv.serviceName) + (sv.quantity > 1 ? ' (' + sv.quantity + 'x)' : '') + '</td>' +
+          '<td style="font-weight:600;">' + sv.upsValue + '</td>' +
+          '<td style="font-weight:600;color:var(--money);">' + (sv.totalMoney ? fmtMoney(sv.totalMoney) : '-') + '</td></tr>';
+      }
+      popupHtml += '</table></div>' +
+        '<div class="popup-total" style="background:' + color + ';color:#fff;">Total: ' + team.totalUps + ' UPS ' +
+        (team.totalMoney ? '| ' + fmtMoney(team.totalMoney) : '') +
+        '</div>';
+    } else {
+      popupHtml += '<div style="text-align:center;color:#94a3b8;padding:12px 0;font-size:13px;">Nenhum serviço hoje</div>' +
+        '<div class="popup-total" style="background:' + color + ';color:#fff;">Total: 0 UPS</div>';
+    }
+    popupHtml += '</div>';
+
+    var marker = L.marker([lat, lng], { icon: icon })
+      .addTo(map)
+      .bindPopup(popupHtml, { maxWidth: 300, className: 'custom-popup' });
+
+    marker.on('mouseover', function() { this.openPopup(); });
+    marker.on('mouseout', function() { this.closePopup(); });
+
+    mapMarkers.push(marker);
+    bounds.push([lat, lng]);
+  }
+
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+  }
+}
+
+function openTeamModal(userId) {
+  var start = $('adminStartDate').value;
+  var end = $('adminEndDate').value;
+  loading(true);
+  google.script.run
+    .withSuccessHandler(function(summary) {
+      loading(false);
+      if (!summary) { toast('Erro ao buscar dados da equipe', 'error'); return; }
+      
+      $('modalTeamName').textContent = 'Equipe: ' + summary.username;
+      $('modalTotalUps').textContent = summary.totalUps;
+      $('modalTotalMoney').textContent = fmtMoney(summary.totalMoney || 0);
+      $('modalSrvCount').textContent = summary.count;
+      $('modalClass').textContent = summary.class;
+      
+      renderTeamDetails(summary.services);
+      $('teamModal').style.display = 'flex';
+    })
+    .withFailureHandler(function(err) {
+      loading(false);
+      toast('Erro: ' + err.message, 'error');
+    })
+    .getTeamSummaryForPeriod(userId, start, end);
+}
+
+function closeTeamModal() {
+  $('teamModal').style.display = 'none';
+}
+
+function renderTeamDetails(services) {
+  var container = $('modalServiceList');
+  if (!services || services.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p>Nenhum serviço no período</p></div>';
+    return;
+  }
+  var html = '<table><thead><tr><th>Data</th><th>Serviço</th><th>UPS</th><th>R$</th><th>Nota</th></tr></thead><tbody>';
+  for (var i = 0; i < services.length; i++) {
+    var s = services[i];
+    html += '<tr>' +
+      '<td>' + formatDateBr(s.date) + '</td>' +
+      '<td>' + escapeHtml(s.serviceName) + '</td>' +
+      '<td>' + s.upsValue + '</td>' +
+      '<td>' + fmtMoney(s.totalMoney || 0) + '</td>' +
+      '<td>' + s.grade + '</td>' +
+      '</tr>';
+  }
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ===== CONNECTION CHECK =====
+function checkGsConnection() {
+  var statusEl = $('connStatus');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      statusEl.className = 'conn-status success';
+      statusEl.textContent = 'Conectado ao servidor';
+      setTimeout(function() { statusEl.style.display = 'none'; }, 3000);
+    })
+    .withFailureHandler(function(err) {
+      statusEl.className = 'conn-status error';
+      statusEl.textContent = 'ERRO: google.script.run nao disponivel. Publique o sistema no Google Apps Script.';
+    })
+    .checkConnection();
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', function() {
+  loading(false);
+  checkGsConnection();
+  $('loginUser').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') $('loginPass').focus();
+  });
+  $('loginPass').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin();
+  });
+});
+</script>
+</body>
+</html>
