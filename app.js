@@ -820,6 +820,9 @@ function initTabs() {
       if (tabId === 'tabEstatisticas') {
         loadStatistics();
       }
+      if (tabId === 'tabRegras') {
+        loadRules();
+      }
     });
   }
 }
@@ -838,7 +841,6 @@ function loadAllAdminData() {
   });
   loadTeamsList();
   loadCatalogList();
-  loadRules();
   loadMapData(start, end);
   loadStatistics();
 }
